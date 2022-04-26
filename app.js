@@ -7,9 +7,6 @@ const http = require('http');
 const fs = require('fs');
 const { phoneNumberFormatter } = require('./helpers/formatter');
 const fileUpload = require('express-fileupload');
-const axios = require('axios');
-const mime = require('mime-types');
-
 const port = process.env.PORT || 8000;
 
 const app = express();
@@ -21,15 +18,9 @@ app.use(express.urlencoded({
   extended: true
 }));
 app.use(fileUpload({
-  debug: true
+
 }));
 
-
-const SESSION_FILE_PATH = './whatsapp-session.json';
-let sessionCfg;
-if (fs.existsSync(SESSION_FILE_PATH)) {
-  sessionCfg = require(SESSION_FILE_PATH);
-}
 
 app.get('/', (req, res) => {
   res.sendFile('index.html', {
@@ -38,7 +29,8 @@ app.get('/', (req, res) => {
 });
 
 const client = new Client({
-  restartOnAuthFail: true,
+  authStrategy: new LocalAuth(),
+   restartOnAuthFail: true,
   puppeteer: {
     headless: true,
     args: [
@@ -52,12 +44,11 @@ const client = new Client({
       '--disable-gpu'
     ],
   },
-  authStrategy: new LocalAuth()
 });
 
 client.on('message', msg => {
-  if (msg.body == 'liza raj') {
-    msg.reply('i know you are beautiful <3');
+  if (msg.body == 'dhur') {
+    msg.reply('You are Sweety Kumari. Hi dhur..');
   } else if (msg.body == 'good morning') {
     msg.reply('selamat pagi');
   } else if (msg.body == '!groups') {
@@ -103,7 +94,7 @@ io.on('connection', function(socket) {
   client.on('authenticated', (authStrategy) => {
     socket.emit('authenticated', 'Whatsapp is authenticated!');
     socket.emit('message', 'Whatsapp is authenticated!');
-    console.log('AUTHENTICATED', authStrategy);
+    console.log('\x1b[32m','WhatsApp Connected');
     sessionCfg = authStrategy;
     
     
@@ -115,10 +106,6 @@ io.on('connection', function(socket) {
 
   client.on('disconnected', (reason) => {
     socket.emit('message', 'Whatsapp is disconnected!');
-    fs.unlinkSync(SESSION_FILE_PATH, function(err) {
-        if(err) return console.log(err);
-        console.log('Session file deleted!');
-    });
     client.destroy();
     client.initialize();
   });
@@ -160,7 +147,9 @@ app.post('/send-message', [
     });
   }
 
-  client.sendMessage(number, message).then(response => {
+ 
+
+  client.sendMessage(number, media).then(response => {
     res.status(200).json({
       status: true,
       response: response
@@ -176,7 +165,8 @@ app.post('/send-message', [
 // Send media
 app.post('/send-media', async (req, res) => {
   const number = phoneNumberFormatter(req.body.number);
-  const caption = req.body.caption;
+  const message = req.body.message;
+  //const caption = req.body.caption;
   //const fileUrl = req.body.file;
 
   // const media = MessageMedia.fromFilePath('./image-example.png');
@@ -185,11 +175,11 @@ app.post('/send-media', async (req, res) => {
  
 
   // const media = new MessageMedia(mimetype, attachment, 'Media');
-  
+  if (message !== "") {
+    client.sendMessage(number, message);
+  }
 
-  client.sendMessage(number, media, {
-    
-  }).then(response => {
+  client.sendMessage(number, media).then(response => {
     res.status(200).json({
       status: true,
       response: response
@@ -308,5 +298,5 @@ app.post('/clear-message', [
 });
 
 server.listen(port, function() {
-  console.log('App running on *: ' + port);
+  console.log('\x1b[2m','App running on *: ' + port);
 });
